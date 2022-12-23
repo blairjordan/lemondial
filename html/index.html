@@ -1,0 +1,116 @@
+<html>
+  <head>
+    <script
+      type="application/javascript"
+      src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"
+    ></script>
+    <script
+      type="text/javascript"
+      src="https://www.gstatic.com/charts/loader.js"
+    ></script>
+  </head>
+  <body>
+    <audio nocontrols autoplay loop>
+      <source id="audioSource" type="audio/wav" />
+    </audio>
+
+    <script>
+      const base = "http://localhost:3000"
+
+      const imagePath = `${base}/images/`
+      const audioPath = `${base}/audio/`
+      const outputPath = `${base}/output.txt`
+
+      google.charts.load("current", { packages: ["gauge"] })
+
+      let chart = undefined
+      let data = undefined
+
+      const options = {
+        width: 400,
+        height: 500,
+        greenFrom: 0,
+        greenTo: 50,
+        redFrom: 90,
+        redTo: 100,
+        yellowFrom: 75,
+        yellowTo: 90,
+        minorTicks: 5,
+        animation: { easing: "inAndOut", duration: 350 },
+      }
+
+      const drawChart = () => {
+        data = google.visualization.arrayToDataTable([
+          ["Label", "Value"],
+          ["Glob Meter", 0],
+        ])
+
+        chart = new google.visualization.Gauge(
+          document.getElementById("chart_div")
+        )
+
+        chart.draw(data, options)
+      }
+
+      google.charts.setOnLoadCallback(drawChart)
+
+      const parseN = (n) => {
+        const step = 14
+        const state = Math.floor(n / step)
+
+        return {
+          state,
+          image: `${imagePath}${state}.png`,
+          audio: `${audioPath}${state}.mp3`,
+        }
+      }
+
+      let lastState = undefined
+      let player = undefined
+
+      const refresh = () =>
+        $.get(outputPath, (n) => {
+          console.log(n)
+          const { image, audio, state } = parseN(n)
+          if (state !== lastState) {
+            if (state !== 0) {
+
+              if (player) {
+                // stop
+                player.pause()
+                player.currentTime = 0
+              }
+              
+              player = new Audio(audio)
+              player.loop = true
+              player.play()
+
+              $('#image').attr('src', image);
+            }
+          }
+
+          if (data) {
+            data.setValue(0, 1, n)
+            chart.draw(data, options)
+          }
+
+          lastState = state
+        })
+
+      const interval = setInterval(async () => {
+        refresh()
+      }, 100)
+    </script>
+
+    <img id="image" />
+    <div
+      id="chart_div"
+      style="
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100%;
+      "
+    ></div>
+  </body>
+</html>
